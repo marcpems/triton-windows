@@ -33,7 +33,7 @@
     .\build_arm64.ps1 -SkipLLVM -SkipJson -SkipPatches
 #>
 param(
-    [int]$LLVMBuildJobs = 8,
+    [int]$LLVMBuildJobs = $Env:NUMBER_OF_PROCESSORS,
     [string]$Branch = "release/3.6.x-windows",
     [switch]$SkipLLVM,
     [switch]$SkipJson,
