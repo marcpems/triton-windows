@@ -37,7 +37,8 @@ param(
     [string]$Branch = "release/3.6.x-windows",
     [switch]$SkipLLVM,
     [switch]$SkipJson,
-    [switch]$SkipPatches
+    [switch]$SkipPatches,
+    [switch]$SkipCudaTests
 )
 
 $ErrorActionPreference = "Stop"
@@ -458,4 +459,37 @@ if ($testsFailed) {
     Write-Warning "Some non-CUDA tests failed. Review the output above."
 } else {
     Write-Host "`nAll non-CUDA tests passed!" -ForegroundColor Green
+}
+Write-Host ""
+
+# ---------------------------------------------------------------------------
+# Step 10: Run CUDA tests (requires NVIDIA GPU + PyTorch with CUDA)
+# ---------------------------------------------------------------------------
+if (-not $SkipCudaTests) {
+    Write-Host "--- Step 10: Running CUDA tests ---" -ForegroundColor Yellow
+
+    $cudaTestFiles = @(
+        "python/test/unit/cuda/test_mixed_io.py::test_add",
+        "python/test/unit/language/test_core.py::test_addptr"
+    )
+
+    $cudaTestsFailed = $false
+    foreach ($t in $cudaTestFiles) {
+        Write-Host "`nRunning: pytest $t" -ForegroundColor Cyan
+        Push-Location $TritonRoot
+        pytest $t -s --tb=short
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "FAILED: $t"
+            $cudaTestsFailed = $true
+        }
+        Pop-Location
+    }
+
+    if ($cudaTestsFailed) {
+        Write-Warning "Some CUDA tests failed. Review the output above."
+    } else {
+        Write-Host "`nAll CUDA tests passed!" -ForegroundColor Green
+    }
+} else {
+    Write-Host "--- Step 10: Skipping CUDA tests (-SkipCudaTests) ---" -ForegroundColor Yellow
 }
