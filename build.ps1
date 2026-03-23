@@ -287,6 +287,29 @@ Write-Host ""
 if (-not $SkipCudaTests) {
     Write-Host "--- Step 7: Running CUDA tests ---" -ForegroundColor Yellow
 
+    # Check for CUDA-enabled PyTorch
+    $torchCuda = python -c "import torch; print(torch.cuda.is_available())" 2>&1
+    if ($torchCuda -ne "True") {
+        Write-Warning "PyTorch with CUDA support is not installed (torch.cuda.is_available() = $torchCuda)."
+        $torchVersion = python -c "import torch; print(torch.__version__)" 2>&1
+        Write-Host "  Current torch version: $torchVersion" -ForegroundColor DarkYellow
+        Write-Host ""
+        $response = Read-Host "Install CUDA-enabled PyTorch now? (Y/n)"
+        if ($response -eq '' -or $response -match '^[Yy]') {
+            Write-Host "Installing PyTorch with CUDA support..."
+            pip install torch --force-reinstall --index-url https://download.pytorch.org/whl/cu126
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Failed to install CUDA PyTorch. Skipping CUDA tests."
+                $SkipCudaTests = $true
+            }
+        } else {
+            Write-Warning "Skipping CUDA tests (no CUDA-enabled PyTorch)."
+            $SkipCudaTests = $true
+        }
+    }
+}
+
+if (-not $SkipCudaTests) {
     $cudaTestFiles = @(
         "python/test/unit/cuda/test_mixed_io.py::test_add",
         "python/test/unit/language/test_core.py::test_addptr"
