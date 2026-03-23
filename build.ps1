@@ -27,7 +27,7 @@
 #>
 param(
     [int]$LLVMBuildJobs = $Env:NUMBER_OF_PROCESSORS,
-    [string]$Branch = "release/3.6.x-windows",
+    [string]$Branch = "build-scripts-release",
     [switch]$SkipLLVM,
     [switch]$SkipJson,
     [switch]$SkipCudaTests
