@@ -414,3 +414,48 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 Write-Host "Triton $version installed successfully for ARM64!" -ForegroundColor Green
+Write-Host ""
+
+# ---------------------------------------------------------------------------
+# Step 9: Run non-CUDA tests
+# ---------------------------------------------------------------------------
+Write-Host "--- Step 9: Running non-CUDA tests ---" -ForegroundColor Yellow
+
+# Install test dependencies
+pip install pytest pytest-forked pytest-instafail pytest-xdist
+if ($LASTEXITCODE -ne 0) { Write-Error "Failed to install test dependencies"; exit 1 }
+
+# Copy FileCheck.exe into the triton package so _filecheck.py can find it
+$fileCheckSrc = Join-Path $LLVMBuild "bin\FileCheck.exe"
+$fileCheckDst = Join-Path $TritonRoot "python\triton\FileCheck.exe"
+if (Test-Path $fileCheckSrc) {
+    Copy-Item $fileCheckSrc $fileCheckDst -Force
+    Write-Host "Copied FileCheck.exe to python\triton\"
+} else {
+    Write-Warning "FileCheck.exe not found at $fileCheckSrc - filecheck tests will fail"
+}
+
+$testFiles = @(
+    "python/test/unit/test_filecheck.py",
+    "python/test/unit/runtime/test_build.py::test_compile_module",
+    "python/test/unit/tools/test_linear_layout.py",
+    "python/test/unit/language/test_frontend.py"
+)
+
+$testsFailed = $false
+foreach ($t in $testFiles) {
+    Write-Host "`nRunning: pytest $t" -ForegroundColor Cyan
+    Push-Location $TritonRoot
+    pytest $t -s --tb=short
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "FAILED: $t"
+        $testsFailed = $true
+    }
+    Pop-Location
+}
+
+if ($testsFailed) {
+    Write-Warning "Some non-CUDA tests failed. Review the output above."
+} else {
+    Write-Host "`nAll non-CUDA tests passed!" -ForegroundColor Green
+}
